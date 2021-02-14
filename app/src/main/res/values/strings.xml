@@ -1,3 +1,4 @@
 <resources>
-    <string name="app_name">DreamSoundsCompose</string>
+    <string name="app_name">Dream Sounds</string>
+    <string name="notification_channel_description">Notification channel for the Dream Sounds app</string>
 </resources>
