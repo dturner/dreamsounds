@@ -21,16 +21,24 @@
             </intent-filter>
         </activity>
 
+        <receiver android:name="androidx.media.session.MediaButtonReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
         <service
-            android:name=".MusicService"
+            android:name=".PlayerService"
             android:enabled="true"
-            android:exported="true"
+            android:exported="false"
             tools:ignore="ExportedService">
 
             <intent-filter>
                 <action android:name="android.media.browse.MediaBrowserService" />
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </service>
+
     </application>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
 </manifest>
