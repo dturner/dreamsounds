@@ -8,24 +8,24 @@ import android.media.session.MediaController
 import android.media.session.PlaybackState
 import android.os.Bundle
 import android.util.Log
+import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.ScrollableColumn
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.preferredHeight
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.setContent
-import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
@@ -102,21 +102,23 @@ class MainActivity : AppCompatActivity() {
 @Composable
 fun SoundList(onPlaySound: (soundId : String) -> Unit) {
 
-    val imageModifier = Modifier
-        .preferredHeight(120.dp)
-        .clip(shape = RoundedCornerShape(4.dp))
-
-    ScrollableColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 4.dp)) {
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .verticalScroll(rememberScrollState()))
+    {
         for ((soundId, sound) in SOUNDS) {
             Row {
                 Button(
                     modifier = Modifier.padding(start = 4.dp, top = 4.dp, end = 4.dp),
                     contentPadding = PaddingValues(all = 0.dp),
                     onClick = { onPlaySound(soundId) },) {
-                    val imageResource = imageResource(id = sound.imageId)
+                    val imageResource = painterResource(id = sound.imageId)
                     Image(
                         imageResource,
-                        modifier = imageModifier,
+                        sound.description,
+                        modifier = Modifier
+                            .requiredHeight(120.dp)
+                            .clip(shape = RoundedCornerShape(4.dp)),
                         contentScale = ContentScale.Crop
                     )
                 }
