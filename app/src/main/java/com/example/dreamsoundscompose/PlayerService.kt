@@ -81,14 +81,15 @@ class PlayerService : MediaBrowserServiceCompat() {
             setPlaybackState(
                 PlaybackStateCompat.Builder()
                     .setActions(PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_PAUSE)
-                    .setState(PlaybackStateCompat.STATE_PAUSED,  PLAYBACK_POSITION_UNKNOWN,1.0F)
+                    .setState(PlaybackStateCompat.STATE_PAUSED, PLAYBACK_POSITION_UNKNOWN, 1.0F)
                     .build()
             )
         }
-
         mediaSession.setCallback(MediaSessionCallback())
 
-        createNotificationChannel()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            createNotificationChannel()
+        }
     }
 
     override fun onDestroy() {
@@ -114,8 +115,7 @@ class PlayerService : MediaBrowserServiceCompat() {
     ): BrowserRoot {
 
         Log.d(TAG, "onGetRoot called by $clientPackageName")
-        val rootId = clientPackageName
-        return BrowserRoot(rootId, null)
+        return BrowserRoot(clientPackageName, null)
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -143,7 +143,7 @@ class PlayerService : MediaBrowserServiceCompat() {
 
     private inner class MediaSessionCallback : MediaSessionCompat.Callback() {
 
-        val pausedState = PlaybackStateCompat.Builder()
+        val pausedState: PlaybackStateCompat = PlaybackStateCompat.Builder()
             .setState(
                 PlaybackStateCompat.STATE_PAUSED,
                 PLAYBACK_POSITION_UNKNOWN,
@@ -152,7 +152,7 @@ class PlayerService : MediaBrowserServiceCompat() {
             .setActions(PlaybackStateCompat.ACTION_PLAY)
             .build()
 
-        val playingState = PlaybackStateCompat.Builder()
+        val playingState: PlaybackStateCompat = PlaybackStateCompat.Builder()
             .setState(
                 PlaybackStateCompat.STATE_PLAYING,
                 PLAYBACK_POSITION_UNKNOWN,
@@ -183,31 +183,31 @@ class PlayerService : MediaBrowserServiceCompat() {
             )
         ).build()
 
-        val notificationWhilePlaying: Notification =
-            NotificationCompat.Builder(this@PlayerService, CHANNEL_ID)
+        fun createNotification(isPlaying: Boolean): Notification {
+            val notificationBuilder = NotificationCompat.Builder(this@PlayerService, CHANNEL_ID)
                 .setStyle(
                     androidx.media.app.NotificationCompat.MediaStyle()
                         .setMediaSession(mediaSession.sessionToken)
                         .setShowActionsInCompactView(0)
                 )
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .addAction(pauseAction)
-                .setOnlyAlertOnce(true)
-                .build()
-
-        val notificationWhilePaused: Notification =
-            NotificationCompat.Builder(this@PlayerService, CHANNEL_ID)
-                .setStyle(
-                    androidx.media.app.NotificationCompat.MediaStyle()
-                        .setMediaSession(mediaSession.sessionToken)
-                        .setShowActionsInCompactView(0)
+                .setContentTitle(
+                    mediaSession.controller.metadata.getText(MediaMetadata.METADATA_KEY_TITLE)
+                        .toString()
                 )
                 .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .addAction(playAction)
                 .setOnlyAlertOnce(true)
-                .build()
 
-        val notificationManager: NotificationManager = getSystemService(NotificationManager::class.java)
+            if (isPlaying) {
+                notificationBuilder.addAction(pauseAction)
+            } else {
+                notificationBuilder.addAction(playAction)
+            }
+
+            return notificationBuilder.build()
+        }
+
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
             Log.d(TAG, "mediaSession onPlayFromMediaId $mediaId")
@@ -217,16 +217,18 @@ class PlayerService : MediaBrowserServiceCompat() {
             exoPlayer.prepare()
             exoPlayer.play()
 
-            // Update the notification
+            // Update the media session
             mediaSession.setMetadata(
                 MediaMetadataCompat.Builder()
                     .putString(MediaMetadata.METADATA_KEY_TITLE, mediaId)
                     .build()
             )
-            mediaSession.setPlaybackState(playingState)
-            notificationManager.notify(NOTIFICATION_ID, notificationWhilePlaying)
 
-            startForeground(NOTIFICATION_ID, notificationWhilePlaying)
+            val notification = createNotification(true)
+
+            mediaSession.setPlaybackState(playingState)
+            notificationManager.notify(NOTIFICATION_ID, notification)
+            startForeground(NOTIFICATION_ID, notification)
         }
 
         override fun onPlay() {
@@ -235,7 +237,9 @@ class PlayerService : MediaBrowserServiceCompat() {
 
             exoPlayer.play()
             mediaSession.setPlaybackState(playingState)
-            notificationManager.notify(NOTIFICATION_ID, notificationWhilePlaying)
+
+            val notification = createNotification(true)
+            notificationManager.notify(NOTIFICATION_ID, notification)
         }
 
         override fun onPause() {
@@ -243,7 +247,7 @@ class PlayerService : MediaBrowserServiceCompat() {
             Log.d(TAG, "mediaSession onPause")
             exoPlayer.pause()
             mediaSession.setPlaybackState(pausedState)
-            notificationManager.notify(NOTIFICATION_ID, notificationWhilePaused)
+            notificationManager.notify(NOTIFICATION_ID, createNotification(false))
         }
     }
 }
